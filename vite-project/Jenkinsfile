@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    tools {
+        nodejs('24.3.0')
+    }
+    environment {
+        IMAGE_NAME = 'lek142542/react-app'
+        IMAGE_TAG = "latest"
+        DOCKER_HOST = "tcp://host.docker.internal:2375"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git credentialsId: 'github-credentials',
+                    url: 'https://github.com/lek242542/kube-demo.git',
+                    branch: 'dev'
+            }
+        }
+        stage('Build React App') {
+            steps {
+                echo 'Installing dependencies and running tests...'
+                sh '''
+                    cd vite-project
+                    npm install
+                    npm run build
+                '''
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                 sh '''
+                    cd vite-project
+                   docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
+            }
+        }
+        
+        stage('Push Docker Image') {
+            steps {
+                withDockerRegistry([credentialsId: 'dockerhub-credentials', url: '']) {
+                    sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
+                }
+            }
+        }
+
+    }
+}
